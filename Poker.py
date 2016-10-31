@@ -12,6 +12,8 @@
 # anything, but clicking SUBMIT will let you know if you
 # have gotten the problem right. 
 import random
+import itertools
+
 hand_names = ['High Cards', 'One Pair', 'Two Pair', '3 of a Kind', 'Straight', 'Flush', 'Full House', '4 of a Kind', 'Straight Flush']
 def poker(hands):
     "Return the list of best hands: poker([hand,...]) => [hand, hand..]"
@@ -19,23 +21,23 @@ def poker(hands):
 
 def hand_rank(hand):
     ranks = card_ranks(hand)
-    if straight(ranks) and flush(hand):            # straight flush
+    if straight(ranks) and flush(hand):            # straight flush (D9 D8 D7 D6 D5)->(8, 9)
         return (8, max(ranks))
-    elif kind(4, ranks):                           # 4 of a kind
+    elif kind(4, ranks):                           # 4 of a kind (9 9 9 9 3) -> (7, 9, 3)
         return (7, kind(4, ranks), kind(1, ranks))
-    elif kind(3, ranks) and kind(2, ranks):        # full house
+    elif kind(3, ranks) and kind(2, ranks):        # full house (4 4 4 5 5) -> (6, 4, 5)
         return (6, kind(3, ranks), kind(2, ranks))
-    elif flush(hand):                              # flush
+    elif flush(hand):                              # flush ( DA D9 D5 D3 D2)->(5, (10 9 5 3 2))
         return (5, ranks)
-    elif straight(ranks):                          # straight
+    elif straight(ranks):                          # straight ( 7 6 5 4 3)->(4, (7 6 5 4 3))
         return (4, max(ranks))
-    elif kind(3, ranks):                           # 3 of a kind
+    elif kind(3, ranks):                           # 3 of a kind ( 7 7 7 8 6) (3, 7,(7 6 5 4 3))
         return (3, kind(3, ranks), ranks)
-    elif two_pairs(ranks):                          # 2 pair
+    elif two_pairs(ranks):                          # 2 pair (6 6 5 5 8) (2,(6,5),(6 6 5 5 8))
         return (2, two_pairs(ranks) , ranks)
-    elif kind(2, ranks):                           # kind
+    elif kind(2, ranks):                           # kind (4, 4 , 8, 3, 7) (1, 4, (4 4 8 3 7))
         return (1, kind(2, ranks), ranks)
-    else:                                          # high card
+    else:                                          # high card (3 5 7 9 12) (0, (3 5 7 9 12))
         return (0, ranks)
 
 def card_ranks(cards):
@@ -88,11 +90,29 @@ def hand_percentage(n = 700*1000):
             ranking = hand_rank(hand)[0]
             if ranking == 8:
                 print ranking
-            #print ranking
+
             counts[ranking] += 1
 
     for i in reversed(range(9)):
         print("%14s: %6.6f %% %6.6f %%" % (hand_names[i], 100.0 * counts[i] / n, wikipedia_values[i]))
+
+
+def test_best_hand():
+    assert (sorted(best_hand("6C 7C 8C 9C TC 5C JS".split()))
+            == ['6C', '7C', '8C', '9C', 'TC'])
+    assert (sorted(best_hand("TD TC TH 7C 7D 8C 8S".split()))
+            == ['8C', '8S', 'TC', 'TD', 'TH'])
+    assert (sorted(best_hand("JD TC TH 7C 7D 7S 7H".split()))
+            == ['7C', '7D', '7H', '7S', 'JD'])
+    return 'test_best_hand passes'
+
+
+
+
+
+def best_hand(hand):
+    "From a 7-card hand, return the best 5 card hand."
+    return max(itertools.combinations(hand, 5), key = hand_rank)
 
 def test():
     allmaxlist = [['6C', '7C', '8C', '9C', 'TC'], ['6D', '7D', '8D', '9D', 'TD'],
@@ -125,5 +145,30 @@ def test():
     assert hand_rank(fk) == (7, 9, 7)
     assert hand_rank(fh) == (6, 10, 7)
 
+allranks = '23456789TJQKA'
+redcards = [r+s for r in allranks for s in 'DH']
+blackcards = [r+s for r in allranks for s in 'SC']
 
-hand_percentage()
+def best_wild_hand(hand):
+    # https://discussions.udacity.com/t/best-wild-hand-hw1-2-solution/65955/5
+    "Try all values for jokers in all 5-card selections."
+    hands = set(best_hand(h)
+                for h in itertools.product(*map(replacements, hand)))
+    return max(hands, key = hand_rank)
+
+
+def replacements(card):
+    if card == '?B' : return blackcards
+    elif card == '?R': return redcards
+    else: return [card]
+
+def test_best_wild_hand():
+    assert (sorted(best_wild_hand("6C 7C 8C 9C TC 5C ?B".split()))
+            == ['7C', '8C', '9C', 'JC', 'TC'])
+    assert (sorted(best_wild_hand("TD TC 5H 5C 7C ?R ?B".split()))
+            == ['7C', 'TC', 'TD', 'TH', 'TS'])
+    assert (sorted(best_wild_hand("JD TC TH 7C 7D 7S 7H".split()))
+            == ['7C', '7D', '7H', '7S', 'JD'])
+    return 'test_best_wild_hand passes'
+print test_best_hand()
+print best_wild_hand("6C 7C 8C 9C TC 5C ?B".split())
